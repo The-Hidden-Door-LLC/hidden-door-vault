@@ -1,5 +1,6 @@
 'use strict';
 const net = require('node:net');
+const { LineFrames } = require('./line-frames.cjs');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const os = require('node:os');
@@ -153,22 +154,18 @@ class BridgeServer {
   }
 
   handleConnection(socket) {
-    let buffer = '';
-    socket.setEncoding('utf8');
+    const frames = new LineFrames(MAX_FRAME_BYTES);
     socket.on('data', chunk => {
-      buffer += chunk;
-      if (Buffer.byteLength(buffer, 'utf8') > MAX_FRAME_BYTES) { socket.destroy(); return; }
-      let idx;
-      while ((idx = buffer.indexOf('\n')) !== -1) {
-        const line = buffer.slice(0, idx).trim();
-        buffer = buffer.slice(idx + 1);
-        if (!line) continue;
-        this.processLine(line).then(reply => {
-          if (!socket.destroyed) socket.write(JSON.stringify(reply) + '\n');
-        }).catch(err => {
-          if (!socket.destroyed) socket.write(JSON.stringify({ ok: false, error: String(err?.message || 'Bridge error') }) + '\n');
+      try {
+        frames.push(chunk, line => {
+          if (!line) return;
+          this.processLine(line).then(reply => {
+            if (!socket.destroyed) socket.write(JSON.stringify(reply) + '\n');
+          }).catch(err => {
+            if (!socket.destroyed) socket.write(JSON.stringify({ ok: false, error: String(err?.message || 'Bridge error') }) + '\n');
+          });
         });
-      }
+      } catch { socket.destroy(); }
     });
     socket.on('error', () => {});
   }
@@ -785,7 +782,7 @@ function sendBridgeRequest(action, payload = {}, options = {}) {
     const requestLine = JSON.stringify({ id: 1, action, payload }) + '\n';
     if (Buffer.byteLength(requestLine) > MAX_FRAME_BYTES) { reject(new Error('Vault request exceeds the 24 MiB transport limit.')); return; }
     const socket = net.createConnection(socketPath);
-    let buffer = '';
+    const frames = new LineFrames(MAX_FRAME_BYTES);
     let settled = false;
     const timer = setTimeout(() => {
       if (settled) return;
@@ -794,26 +791,28 @@ function sendBridgeRequest(action, payload = {}, options = {}) {
       reject(new Error('Timed out waiting for Hidden Door Vault desktop agent.'));
     }, timeoutMs);
 
-    socket.setEncoding('utf8');
     socket.on('connect', () => {
       socket.write(requestLine);
     });
     socket.on('data', chunk => {
-      buffer += chunk;
-      if (Buffer.byteLength(buffer, 'utf8') > MAX_FRAME_BYTES) { settled = true; clearTimeout(timer); socket.destroy(); reject(new Error('Vault response exceeds the 24 MiB transport limit.')); return; }
-      const idx = buffer.indexOf('\n');
-      if (idx === -1) return;
-      const line = buffer.slice(0, idx).trim();
       if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      socket.end();
       try {
-        const res = JSON.parse(line);
-        if (!res.ok) reject(new Error(res.error || 'Operation failed.'));
-        else resolve(res.data);
-      } catch (err) {
-        reject(new Error('Invalid response from Hidden Door Vault agent.'));
+        frames.push(chunk, line => {
+          settled = true;
+          clearTimeout(timer);
+          socket.end();
+          try {
+            const res = JSON.parse(line);
+            if (!res.ok) reject(new Error(res.error || 'Operation failed.'));
+            else resolve(res.data);
+          } catch {
+            reject(new Error('Invalid response from Hidden Door Vault agent.'));
+          }
+          return false;
+        });
+      } catch {
+        settled = true; clearTimeout(timer); socket.destroy();
+        reject(new Error('Vault response exceeds the 24 MiB transport limit.'));
       }
     });
     socket.on('error', err => {

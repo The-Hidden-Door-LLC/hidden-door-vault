@@ -23,6 +23,9 @@ jobs:
         run: |
           test -x dist/hidden-door-vault/hidden-door-vault
           sudo apt-get install -y xvfb >/dev/null
+          # Fresh copies need the bundled sandbox helper configured before launch.
+          sudo chown root:root dist/hidden-door-vault/chrome-sandbox
+          sudo chmod 4755 dist/hidden-door-vault/chrome-sandbox
           xvfb-run -a dist/hidden-door-vault/hidden-door-vault --version
       - name: Verify the desktop entry and AppArmor profile generators
         run: |

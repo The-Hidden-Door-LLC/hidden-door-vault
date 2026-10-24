@@ -14,10 +14,13 @@ function plist(filename, key, type, value) {
   if (process.platform !== 'darwin') throw new Error('Run the macOS packager on the Mac where you intend to use the app.');
   if (Number(process.versions.node.split('.')[0]) < 22) throw new Error('Node.js 22 or newer is required.');
   const electron = path.join(ROOT, 'node_modules/electron/dist/Electron.app');
-  if (!await exists(electron)) throw new Error('Electron is not installed. Run npm install first.');
   const sourcePackage = JSON.parse(await fs.readFile(path.join(ROOT, 'package.json'), 'utf8'));
   const installedElectron = JSON.parse(await fs.readFile(path.join(ROOT, 'node_modules/electron/package.json'), 'utf8')).version;
   if (installedElectron !== sourcePackage.devDependencies.electron) throw new Error('Installed Electron does not match the pinned package version. Reinstall dependencies.');
+  // Electron 42+ downloads its binary on first use rather than during npm ci.
+  // Resolve through the pinned package so fresh installs initialize its dist.
+  require('electron');
+  if (!await exists(electron)) throw new Error('Electron binary is unavailable after initialization.');
   const output = path.join(ROOT, 'dist', 'Hidden Door Vault.app');
   await fs.mkdir(path.dirname(output), { recursive: true });
   await fs.rm(output, { recursive: true, force: true });
