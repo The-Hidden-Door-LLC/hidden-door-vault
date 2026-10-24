@@ -22,6 +22,8 @@ const { inspectLocalSsh, readLocalSshPrivateKey, inspectLocalConfig, readLocalCo
 const linuxIntegration = require('./core/linux-integration.cjs');
 
 app.setName('Hidden Door Vault');
+// Match the CLI profile override before singleton locks or any storage access.
+if (process.env.HDV_USER_DATA) app.setPath('userData', path.resolve(process.env.HDV_USER_DATA));
 const IS_MAC = process.platform === 'darwin', IS_LINUX = process.platform === 'linux';
 // Platform wording for dialogs and errors. The UI reads the same values from status().
 const DEVICE = IS_MAC ? 'this Mac' : 'this computer';
@@ -35,6 +37,7 @@ app.commandLine.appendSwitch('disable-features', 'AutofillServerCommunication');
 // This is intentionally not a web browser. No remote page ever enters the renderer.
 const UI_PATH = path.join(__dirname, 'ui', 'index.html');
 const UI_URL = pathToFileURL(UI_PATH).href;
+let uiReady = false;
 let win, tray, auth, vault, store, bridgeServer, sshAgentServer, importing = 0, lastProgress = 0, settings = {}, quitting = false, lastActivity = Date.now(), clipboardDigest = null, clipboardTimer, startupBusy = false;
 async function ownedClipboard(expectedDigest = clipboardDigest) {
   if (!expectedDigest) return false;
@@ -226,6 +229,7 @@ async function syncLocalServers() {
         socketPath: path.join(userDir, 'hdv.sock'),
         sshSocketPath: path.join(userDir, 'ssh-agent.sock'),
         getVault: () => vault,
+        getRuntimeStatus: () => ({ packaged: app.isPackaged, uiReady: Boolean(uiReady && win && !win.isDestroyed() && !win.webContents.isDestroyed() && !win.webContents.isCrashed() && win.webContents.getURL() === UI_URL) }),
         getSettings: () => settings,
         getBiometricStatus: async () => {
           const avail = biometricAvailable();
@@ -608,7 +612,10 @@ function makeWindow() {
   win.webContents.on('will-navigate', event => event.preventDefault());
   win.webContents.on('will-attach-webview', event => event.preventDefault());
   win.webContents.on('before-input-event', (_event, input) => { if (input.type === 'keyDown') lastActivity = Date.now(); });
-  win.webContents.on('render-process-gone', () => { lockVault(); });
+  win.webContents.on('did-start-loading', () => { uiReady = false; });
+  win.webContents.on('did-finish-load', () => { uiReady = win.webContents.getURL() === UI_URL; });
+  win.webContents.on('did-fail-load', () => { uiReady = false; });
+  win.webContents.on('render-process-gone', () => { uiReady = false; lockVault(); });
   win.on('blur', () => { if (!touchIdPromptActive && !vault?.unlocked) windowBlurredWhileLocked = true; });
   win.on('focus', () => {
     if (!vault?.unlocked && !touchIdPromptActive && Date.now() - lastTouchIdEndAt >= 1500 && windowBlurredWhileLocked) {
@@ -618,7 +625,7 @@ function makeWindow() {
   });
   win.on('hide', () => { windowBlurredWhileLocked = true; if (settings.lockOnHide) lockVault(); });
   win.on('close', event => { if (!quitting) { event.preventDefault(); windowBlurredWhileLocked = true; lockVault(); win.hide(); } });
-  win.on('closed', () => { win = null; });
+  win.on('closed', () => { uiReady = false; win = null; });
   win.loadFile(UI_PATH);
   win.once('ready-to-show', () => { if (!openedHidden()) showWindow(); });
 }

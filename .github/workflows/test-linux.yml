@@ -7,6 +7,7 @@ permissions:
   contents: read
 jobs:
   test-and-build:
+    timeout-minutes: 15
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -19,14 +20,15 @@ jobs:
       - run: npm run check
       - run: npm test
       - run: npm run build:linux
-      - name: Verify the packaged binary starts under the sandbox
+      - name: Verify the packaged GUI and local bridge under the sandbox
+        timeout-minutes: 2
         run: |
           test -x dist/hidden-door-vault/hidden-door-vault
           sudo apt-get install -y xvfb >/dev/null
           # Fresh copies need the bundled sandbox helper configured before launch.
           sudo chown root:root dist/hidden-door-vault/chrome-sandbox
           sudo chmod 4755 dist/hidden-door-vault/chrome-sandbox
-          xvfb-run -a dist/hidden-door-vault/hidden-door-vault --version
+          xvfb-run -a node scripts/smoke-packaged.cjs dist/hidden-door-vault/hidden-door-vault
       - name: Verify the desktop entry and AppArmor profile generators
         run: |
           node src/core/linux-integration.cjs desktop-entry "$PWD/dist/hidden-door-vault/hidden-door-vault"

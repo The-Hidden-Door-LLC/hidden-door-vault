@@ -110,11 +110,12 @@ function readItemField(item, fieldName) {
 }
 
 class BridgeServer {
-  constructor({ socketPath, sshSocketPath, getVault, getBiometricStatus, ensureUnlocked, onLock, onVaultLocked, onUnlock, onVaultMutated, onActivity, onOpenInApp, confirmAction }) {
+  constructor({ socketPath, sshSocketPath, getVault, getBiometricStatus, getRuntimeStatus, ensureUnlocked, onLock, onVaultLocked, onUnlock, onVaultMutated, onActivity, onOpenInApp, confirmAction }) {
     this.socketPath = socketPath || defaultSocketPath();
     this.sshSocketPath = sshSocketPath || defaultSshSocketPath();
     this.getVault = getVault;
     this.getBiometricStatus = getBiometricStatus;
+    this.getRuntimeStatus = getRuntimeStatus;
     this.ensureUnlocked = ensureUnlocked;
     this.onLock = onLock || onVaultLocked;
     this.onUnlock = onUnlock;
@@ -202,6 +203,7 @@ class BridgeServer {
       try { bio = (await this.getBiometricStatus?.()) || {}; } catch (_) {}
       return {
         running: true,
+        ...(this.getRuntimeStatus ? { runtime: this.getRuntimeStatus() } : {}),
         configured: Boolean(v),
         unlocked: Boolean(v?.unlocked),
         offline: Boolean(v?.offline),
