@@ -1,0 +1,15 @@
+title: Hidden Door Vault User
+description: Read, version, prune and delete secrets in the dedicated Hidden Door Vault project without IAM administration.
+stage: GA
+includedPermissions:
+  - secretmanager.secrets.create
+  - secretmanager.secrets.delete
+  - secretmanager.secrets.get
+  - secretmanager.secrets.list
+  - secretmanager.secrets.update
+  - secretmanager.versions.add
+  - secretmanager.versions.access
+  - secretmanager.versions.list
+  - secretmanager.versions.destroy
+  - secretmanager.versions.enable
+  - serviceusage.services.use

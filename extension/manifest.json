@@ -1,0 +1,47 @@
+{
+  "manifest_version": 3,
+  "name": "Hidden Door Vault",
+  "version": "0.3.3",
+  "description": "Local client-side encrypted autofill, credential auto-save, password generation, TOTP, and WebAuthn passkeys for Hidden Door Vault.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA5Qd2dyt6KS/xYZNldeAwDgvoc6gc/r4j/7Y86gNTGSGbo/XdmL6B9+YQttPgKtW65xn4L6jeEiiSVrwmjeWc9PqDoqpXEuaz2DX9EHrXJ6avzp/nPJFzpcsNyLqZdIVQKkr+HgPRMmZ+2Qyums0J4SVC4e2pXFOtRPFLR/p005g9XT+mCKYSRkIEmzHRIPek1Auf7zre28UwOl6rB0AsJY+rNVmqDRSiDPFRhSZAV0KjbmXVFV0BmiPLzqZii0gGo9nAe7TDbLRU6yUS+/d4N+mLwCGUQSwlSBaoOFdBtaoYNo3m4Gd2j9U2cKezwHBpIPOuVBWRQrm/T4pug/7UvQIDAQAB",
+  "permissions": [
+    "nativeMessaging",
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
+  "icons": {
+    "16": "img/icon-16.png",
+    "32": "img/icon-32.png",
+    "48": "img/icon-48.png",
+    "128": "img/icon-128.png"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Hidden Door Vault",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "img/icon-16.png",
+      "32": "img/icon-32.png",
+      "48": "img/icon-48.png",
+      "128": "img/icon-128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://*/*", "http://localhost/*", "http://127.0.0.1/*"],
+      "js": ["content.js"],
+      "run_at": "document_start",
+      "all_frames": false
+    },
+    {
+      "matches": ["https://*/*", "http://localhost/*", "http://127.0.0.1/*"],
+      "js": ["webauthn-inject.js"],
+      "run_at": "document_start",
+      "world": "MAIN",
+      "all_frames": false
+    }
+  ]
+}

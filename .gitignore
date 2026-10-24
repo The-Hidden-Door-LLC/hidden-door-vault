@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.DS_Store
+*.hdvault
+client_secret*.json
+credentials*.json
+*.csv
+*.log
+.env*
+qa/
+__pycache__/

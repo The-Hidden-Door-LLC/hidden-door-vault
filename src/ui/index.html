@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'none'; font-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="color-scheme" content="dark">
+  <title>Hidden Door Vault</title>
+  <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="app.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <canvas id="thd-sky" aria-hidden="true"></canvas>
+  <div class="titlebar"><span>THE HIDDEN DOOR · VAULT</span><span class="title-security">AES-256-GCM · CLIENT-SIDE ENCRYPTED</span></div>
+  <div class="app-shell">
+    <aside id="sidebar" class="sidebar" aria-label="Vault navigation"></aside>
+    <main id="main" class="workspace"></main>
+  </div>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <dialog id="modal"></dialog>
+</body>
+</html>

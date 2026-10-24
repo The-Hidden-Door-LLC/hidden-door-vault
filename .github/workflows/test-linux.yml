@@ -1,0 +1,31 @@
+name: Test and build Linux development app
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Install pinned desktop runtime
+        run: |
+          npm ci
+      - run: npm run check
+      - run: npm test
+      - run: npm run build:linux
+      - name: Verify the packaged binary starts under the sandbox
+        run: |
+          test -x dist/hidden-door-vault/hidden-door-vault
+          sudo apt-get install -y xvfb >/dev/null
+          xvfb-run -a dist/hidden-door-vault/hidden-door-vault --version
+      - name: Verify the desktop entry and AppArmor profile generators
+        run: |
+          node src/core/linux-integration.cjs desktop-entry "$PWD/dist/hidden-door-vault/hidden-door-vault"
+          node src/core/linux-integration.cjs apparmor-profile "$PWD/dist/hidden-door-vault/hidden-door-vault" > /tmp/hdv.profile
+          sudo apparmor_parser -Q --skip-kernel-load --skip-cache /tmp/hdv.profile
